@@ -2,6 +2,8 @@ import numpy as np
 from numpy.lib.stride_tricks import as_strided
 from maracas.maracas import asl_meter
 from maracas.utils import wavread
+import librosa
+import matplotlib.pyplot as plt
 
 def spectrogram(samples, fft_length=256, sample_rate=2, hop_length=128, pad=0):
 	"""
@@ -70,7 +72,7 @@ def strided_app_givenrows(a, L, nrows):
 	n = a.strides[0]
 	return as_strided(a, shape=(nrows, L), strides=(S*n,n))
 
-def spectrogram_from_file_scipy(filename, step=10, window=20, max_freq=None, eps=1e-14, log=True, normalization=True, pad=0):
+def spectrogram_from_file(filename, downsample=True, step=10, window=20, max_freq=None, eps=1e-14, log=True, normalization=True, pad=0):
 	""" Calculate the log of linear spectrogram from FFT energy
 	Params:
 		filename (str): Path to the audio file
@@ -79,12 +81,13 @@ def spectrogram_from_file_scipy(filename, step=10, window=20, max_freq=None, eps
 		max_freq (int): Only FFT bins corresponding to frequencies between [0, max_freq] are returned
 		eps (float): Small value to ensure numerical stability (for ln(x))
 	"""
-	audio, sample_rate = wavread(filename)
 
-	print(len(audio))
-	print(sample_rate)
+	audio, sample_rate = librosa.load(filename)
 
-	audio = audio.astype('float32')
+	if downsample:
+		audio = librosa.resample(audio, sample_rate, 16000)
+		sample_rate = 16000
+
 	if audio.ndim >= 2:
 		audio = np.mean(audio, 1)
 	if max_freq is None:
@@ -102,16 +105,18 @@ def spectrogram_from_file_scipy(filename, step=10, window=20, max_freq=None, eps
 	pxx, phase, freqs = spectrogram(audio, fft_length=fft_length, sample_rate=sample_rate,hop_length=hop_length, pad=pad)
 	ind = np.where(freqs <= max_freq)[0][-1] + 1
 
+	mag = pxx[:ind, :]
+	melfb = librosa.filters.mel(sample_rate,fft_length,n_mels=64)
+	mag = np.dot(melfb,mag)
+
 	if log:
-		return np.log(pxx[:ind, :] + eps), phase[:ind, :]
+		return np.log(mag + eps), phase[:ind, :]
 	else:
-		return pxx[:ind, :] + eps, phase[:ind, :]
+		return mag + eps, phase[:ind, :]
 
 def spec_extraction_scipy(filename, n_outputs, stft_window=50, stft_step=25, spec_window=256, spec_height=512):
 
 	mag, phase = spectrogram_from_file_scipy(filename, step=stft_step, window=stft_window, log=True)
-
-	print(mag.shape)
 
 	L = mag.shape[1]
 
@@ -133,6 +138,9 @@ if __name__ == '__main__':
 	file_t = 'sp10.wav'
 
 
-	mag, phase = spectrogram_from_file_scipy(file_t, step=20/32, window=50, log=True)
+	mag, phase = spectrogram_from_file(file_, downsample = False, step=10, window=20, log=True)
 
 	print(mag.shape)
+
+	plt.pcolormesh(mag[:,100:132])
+	plt.show()

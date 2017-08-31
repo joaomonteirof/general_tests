@@ -3,22 +3,33 @@ import skimage.io
 import numpy as np
 from skimage.color import rgb2gray
 import dlib
+import json
 
 out_shape = 96
 
 detector = dlib.get_frontal_face_detector()
-
-videogen=skvideo.io.vreader('/home/joaomonteirof/Desktop/emot_mg/data/video/Train_07.avi')
+video_file='/home/joaomonteirof/Desktop/emot_mg/data/video/Train_07.avi'
+videogen=skvideo.io.vreader(video_file)
+metadata=skvideo.io.ffprobe(video_file)
+print(metadata.keys())
+print(json.dumps(metadata['video']))
 
 for i,frame in enumerate(videogen):
 
-	if i>86:
+	if i==0:
+		im_v, im_h, _ = frame.shape
+		c_v, c_h = im_v//2, im_h//2
+		top = c_v-out_shape//2
+		bottom = c_v+out_shape//2
+		left = c_h-out_shape//2
+		right = c_h+out_shape//2
+
+	if i>0:
 
 		frame = rgb2gray(frame)
 
 		im_gray = rgb2gray(frame)
 		im_gray_int = np.asarray(im_gray*255.,dtype=np.uint8)
-		im_v, im_h = im_gray.shape
 
 		rect = detector(im_gray_int,1)
 
