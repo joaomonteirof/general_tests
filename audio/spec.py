@@ -72,7 +72,7 @@ def strided_app_givenrows(a, L, nrows):
 	n = a.strides[0]
 	return as_strided(a, shape=(nrows, L), strides=(S*n,n))
 
-def spectrogram_from_file(filename, downsample=True, step=10, window=20, max_freq=None, eps=1e-14, log=True, normalization=True, pad=0):
+def spectrogram_from_file(filename, step=10, window=20, max_freq=None, eps=1e-14, log=True, normalization=True, pad=0):
 	""" Calculate the log of linear spectrogram from FFT energy
 	Params:
 		filename (str): Path to the audio file
@@ -83,10 +83,6 @@ def spectrogram_from_file(filename, downsample=True, step=10, window=20, max_fre
 	"""
 
 	audio, sample_rate = librosa.load(filename)
-
-	if downsample:
-		audio = librosa.resample(audio, sample_rate, 16000)
-		sample_rate = 16000
 
 	if audio.ndim >= 2:
 		audio = np.mean(audio, 1)
@@ -114,7 +110,7 @@ def spectrogram_from_file(filename, downsample=True, step=10, window=20, max_fre
 	else:
 		return mag + eps, phase[:ind, :]
 
-def spec_extraction_scipy(filename, n_outputs, stft_window=50, stft_step=25, spec_window=256, spec_height=512):
+def spec_extraction(filename, n_outputs, stft_window=20, stft_step=10, spec_window=64, spec_height=64):
 
 	mag, phase = spectrogram_from_file_scipy(filename, step=stft_step, window=stft_window, log=True)
 
@@ -140,7 +136,15 @@ if __name__ == '__main__':
 
 	mag, phase = spectrogram_from_file(file_, downsample = False, step=10, window=20, log=True)
 
+	mean_mag = np.mean(mag,axis=0)
+	std_mag = np.std(mag,axis=0)
+
+	#mag -= mean_mag
+	#mag /= (std_mag+1e-15)
+
 	print(mag.shape)
 
-	plt.pcolormesh(mag[:,100:132])
+	init = 100
+
+	plt.pcolormesh(mag[:,init:init+164])
 	plt.show()
